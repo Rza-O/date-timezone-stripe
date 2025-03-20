@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  clerkId          String   @unique
+  name             String
+  email            String   @unique
+  role             Role     @default(USER)
+  timezone         String   @default("UTC")
+  stripeCustomerId String? // Add this field to store Stripe Customer ID
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  bookings       Booking[]
+  availabilities Availability[]
+  bundleBookings BundleBooking[]
+  payments       Payment[]
+  paymentLogs    PaymentLog[]
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  name      String
+  capacity  Int
+  location  String
+  timezone  String   @default("UTC")
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  availabilities Availability[]
+  bookings       Booking[]
+  Slot           Slot[]
+}
+
+model BundleBooking {
+  id        String       @id @default(uuid())
+  userId    Int
+  status    BundleStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  bookings Booking[]
+}
+
+model Booking {
+  id              Int           @id @unique @default(autoincrement())
+  userId          Int
+  slotId          Int           @unique
+  bundleBookingId String?
+  status          BookingStatus @default(CONFIRMED)
+  bookedAt        DateTime      @default(now())
+  startTime       DateTime
+  endTime         DateTime
+  timezone        String
+  roomId          Int?
+  payments        Payment[]
+  paymentLogs     PaymentLog[]
+
+  // Relations
+  user          User           @relation(fields: [userId], references: [id])
+  slot          Slot           @relation(fields: [slotId], references: [id])
+  bundleBooking BundleBooking? @relation(fields: [bundleBookingId], references: [id])
+  Room          Room?          @relation(fields: [roomId], references: [id])
+}
+
+model Availability {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  roomId   Int
+  date     DateTime
+  timezone String
+
+  // Relations
+  slots Slot[]
+  user  User   @relation(fields: [userId], references: [id])
+  room  Room   @relation(fields: [roomId], references: [id])
+}
+
+model Slot {
+  id             Int      @id @default(autoincrement())
+  availabilityId Int
+  startTime      DateTime
+  endTime        DateTime
+  isBooked       Boolean  @default(false)
+  roomId         Int? // Add this field if slots belong to rooms
+
+  // Relations
+  availability Availability @relation(fields: [availabilityId], references: [id])
+  room         Room?        @relation(fields: [roomId], references: [id])
+  bookings     Booking[]
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        Int
+  bookingId     Int?
+  amount        Float
+  currency      String        @default("USD")
+  status        PaymentStatus @default(COMPLETED)
+  method        String
+  transactionId String?
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+}
+
+model PaymentLog {
+  id                    String           @id @default(uuid())
+  userId                Int
+  bookingId             Int?
+  amount                Float
+  currency              String           @default("USD")
+  status                PaymentLogStatus @default(INTENT)
+  method                String
+  errorMessage          String?
+  stripePaymentIntentId String? // Add this field to store Stripe Payment Intent ID
+  createdAt             DateTime         @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+}
+
+enum BundleStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentLogStatus {
+  INTENT
+  FAILED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PaymentType {
+  SINGLE
+  BUNDLE
+}
