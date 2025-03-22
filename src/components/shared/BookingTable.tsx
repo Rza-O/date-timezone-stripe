@@ -16,7 +16,6 @@ interface Booking {
 const BookingTable = () => {
    const { user } = useUser();
    const userId = user?.id;
-   const clerkId = user?.clerkId;
    const [bookings, setBookings] = useState<Booking[]>([]);
    const [selectedTimezone, setSelectedTimezone] = useState<string | null>(null);
 
@@ -44,9 +43,9 @@ const BookingTable = () => {
       // Fetch bookings based on the selected timezone
       axios
          .get(`/api/bookings?userId=${userId}&timezone=${selectedTimezone}`)
-         .then((res) => setBookings(res.data.bookings))
+         .then((res) => setBookings(res.data.bookings || []))
          .catch(() => console.error("Failed to fetch bookings"));
-   }, [selectedTimezone, userId]); 
+   }, [selectedTimezone, userId]);
 
    return (
       <div className="p-4">

@@ -17,6 +17,11 @@ export const POST = async (req: NextRequest) => {
 		const { amount = 2300, metadata } = await req.json();
 		console.log("Received Metadata in intent:", metadata);
 
+		const { startTime, endTime } = metadata;
+
+		const startTimeWithUTC = new Date(startTime).toISOString();
+		const endTimeWithUTC = new Date(endTime).toISOString();
+
 		const user = await prisma.user.findUnique({
 			where: { clerkId: loggedInUser.id },
 		});
@@ -45,14 +50,18 @@ export const POST = async (req: NextRequest) => {
 			amount,
 			currency: "usd",
 			customer: customerId,
-			metadata,
+			metadata: {
+				...metadata,
+				startTime: startTimeWithUTC,
+				endTime: endTimeWithUTC,
+			},
 			automatic_payment_methods: { enabled: true },
 		});
 
 		await prisma.paymentLog.create({
 			data: {
 				userId: user.id,
-				
+
 				amount: amount / 100,
 				currency: "USD",
 				status: "INTENT",

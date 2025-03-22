@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
-import { format } from "date-fns"; 
+import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prismaClient";
 
 export async function GET(req: Request) {
@@ -23,7 +22,7 @@ export async function GET(req: Request) {
 				id: true,
 				startTime: true,
 				endTime: true,
-				timezone: true, 
+				timezone: true,
 				Room: { select: { name: true, timezone: true } },
 			},
 		});
@@ -50,9 +49,14 @@ export async function GET(req: Request) {
 				targetTimezone,
 				"hh:mm a"
 			);
+			console.log("formattedStartTime=> ", formattedStartTime);
 
-			// Get the day of the week 
-			const dayOfWeek = format(booking.startTime, "EEEE");
+			// Get the day of the week
+			const dayOfWeek = formatInTimeZone(
+				booking.startTime,
+				targetTimezone,
+				"EEEE"
+			);
 
 			return {
 				id: booking.id,
@@ -60,7 +64,7 @@ export async function GET(req: Request) {
 				startTime: formattedStartTime,
 				endTime: formattedEndTime,
 				timezone: targetTimezone,
-				dayOfWeek: dayOfWeek, 
+				dayOfWeek: dayOfWeek,
 			};
 		});
 

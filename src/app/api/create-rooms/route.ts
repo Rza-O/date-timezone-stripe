@@ -31,13 +31,16 @@ export const POST = async (req: Request) => {
 			where: { clerkId: user.id },
 		});
 
+		//  Check if User is an Admin
 		if (!dbUser || dbUser.role !== "ADMIN") {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
 
+		// Parse and validate request data
 		const requestData = await req.json();
 		const parsedData = roomSchema.parse(requestData);
 
+		//  Get Current Date Information
 		const today = new Date();
 		const currentYear = today.getFullYear();
 		const currentMonth = today.getMonth();
@@ -50,6 +53,7 @@ export const POST = async (req: Request) => {
 				location: parsedData.location,
 				timezone: parsedData.timezone,
 				availabilities: {
+					// Process Availability (Mapping Days & Time Slots)
 					create: Object.entries(parsedData.availability).flatMap(
 						([day, slots]) =>
 							Array.from({ length: 12 }).flatMap((_, weekOffset) => {
@@ -91,11 +95,19 @@ export const POST = async (req: Request) => {
 											);
 										}
 
-										const startTime = new Date(startDate);
-										startTime.setHours(hours, minutes, 0, 0); // Set the start time of the availability slot.
+										const startTime = new Date(
+											Date.UTC(
+												startDate.getFullYear(),
+												startDate.getMonth(),
+												startDate.getDate(),
+												hours,
+												minutes,
+												0
+											)
+										);
 
 										const endTime = new Date(startTime);
-										endTime.setHours(startTime.getHours() + 1); // The end time is 1 hour after the start time.
+										endTime.setUTCHours(startTime.getUTCHours() + 1);
 
 										return {
 											date: startDate, // The date for this availability slot.
@@ -116,7 +128,8 @@ export const POST = async (req: Request) => {
 				},
 			},
 		});
-
+		// console.log("🚀 ~ POST ~ parsedData:", parsedData)
+		// console.log("🚀 ~ POST ~ parsedData:", parsedData)
 
 		return NextResponse.json(
 			{ message: "Room created successfully", room },
@@ -124,10 +137,8 @@ export const POST = async (req: Request) => {
 		);
 	} catch (error) {
 		console.error("Error creating room:", error);
-		const errorMessage = error instanceof Error ? error.message : "Failed to create room";
-		return NextResponse.json(
-			{ error: errorMessage },
-			{ status: 500 }
-		);
+		const errorMessage =
+			error instanceof Error ? error.message : "Failed to create room";
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 };

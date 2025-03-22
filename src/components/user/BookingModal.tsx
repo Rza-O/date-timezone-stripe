@@ -5,15 +5,16 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { format, isSameDay, isWeekend } from "date-fns";
+import { format, isWeekend } from "date-fns";
 import React, { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import toast from "react-hot-toast";
 import { useUser } from "../../hooks/useUser";
-import DetectTimezone from "../sideEffects/DetectTimezone";
 import { Button } from "../ui/button";
 import CheckoutForm from "./CheckoutForm";
+import { formatInTimeZone } from "date-fns-tz";
+import DetectTimezone from "../sideEffects/DetectTimezone";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -28,20 +29,27 @@ const BookingModal: React.FC<BookingModalProps> = ({ room, onClose }) => {
    const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
    const [clientSecret, setClientSecret] = useState<string | null>(null);
    const { user } = useUser();
-   // const timezone = DetectTimezone();
+   const { selectedTimezone } = DetectTimezone();
+   console.log(selectedTimezone)
    // const userId = user.clerkId;
    // console.log(user.clerkId)
 
    const handleSlotSelection = (slotId: number) => setSelectedSlot(slotId);
 
-   const isDateAvailable = (date: Date) => !isWeekend(date);
+   const isDateAvailable = (date: Date) => {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      return !isWeekend(date) && room.availabilities.some((a: any) => format(new Date(a.date), 'yyyy-MM-dd') === formattedDate);
+   };
 
    // Get all available slots for the selected date
    const selectedAvailability = selectedDate
       ? room.availabilities.filter((availability: any) =>
-         isSameDay(new Date(availability.date), selectedDate)
+         format(new Date(availability.date), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
       )
       : [];
+
+
+   console.log(selectedDate, selectedSlot, selectedAvailability)
 
    const createBookingMutation = useMutation({
       mutationFn: async () => {
@@ -53,6 +61,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ room, onClose }) => {
 
             const selectedSlotData = selectedAvailability
                .flatMap((availability: any) => availability.slots)
+
                .find((slot: any) => slot.id === selectedSlot);
 
             console.log("Selected Slot Data Before Check:", selectedSlotData);
@@ -61,8 +70,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ room, onClose }) => {
                toast.error("Invalid slot selection. Please try again.");
                throw new Error("Selected slot not found.");
             }
-            const startTimeUtc = new Date(selectedSlotData.startTime).toISOString();
-            const endTimeUtc = new Date(selectedSlotData.endTime).toISOString();
+            // const startTimeUtc = new Date(selectedSlotData.startTime).toISOString();
+            // const endTimeUtc = new Date(selectedSlotData.endTime).toISOString();
 
 
             // console.log("Booking Data Before API Call:", {
@@ -80,7 +89,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ room, onClose }) => {
                   userId: user.id,
                   slotId: selectedSlot,
                   roomId: room.id,
-                  startTime: selectedSlotData.startTime,
+                  startTime: selectedSlotData.startTime, //2025-03-24T14:00:00Z
                   endTime: selectedSlotData.endTime,
                   timezone: 'UTC',
                },
@@ -137,7 +146,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ room, onClose }) => {
                                     }`}
                                  onClick={() => handleSlotSelection(slot.id)}
                               >
-                                 {format(new Date(slot.startTime), "HH:mm")}
+                                 {formatInTimeZone(new Date(slot.startTime), selectedTimezone, "HH:mm")}
                               </Button>
                            ))
                      )}

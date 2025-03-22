@@ -30,10 +30,10 @@ export default function RoomForm() {
       resolver: zodResolver(roomSchema),
    });
 
-   const handleAvailabilityChange = (day: string, timeSlot: string) => {
+   const handleAvailabilityChange = (date: string, timeSlot: string) => {
       setAvailability((prev) => ({
          ...prev,
-         [day]: { ...prev[day], [timeSlot]: !prev[day]?.[timeSlot] },
+         [date]: { ...prev[date], [timeSlot]: !prev[date]?.[timeSlot] },
       }));
    };
 
